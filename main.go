@@ -1,15 +1,23 @@
 package main
 
-import "github.com/gin-gonic/gin"
+import (
+	"drop_ball/config"
+
+	"github.com/gin-gonic/gin"
+)
 
 func main() {
 	r := gin.Default()
+	cfg := config.LoadConfig()
+	db := config.InitDB(cfg)
 
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
+	defer func() {
+		sqlDB, _ := db.DB()
+		sqlDB.Close()
+	}()
+
+	config.LoadRoutes(r, db)
+	config.SetResetSchedule(db)
 
 	r.Run()
 }
