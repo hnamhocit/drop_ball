@@ -2,7 +2,7 @@ package models
 
 type User struct {
 	Model
-	Uin       string    `json:"uin" gorm:"unique;not null"` // Ensure Uin is unique
+	Uin       string    `json:"uin" gorm:"unique;not null"`
 	BallCount int       `json:"ball_count"`
-	Missions  []Mission `json:"missions" gorm:"foreignKey:UserUin"`
+	Rewards   []*Reward `json:"rewards" gorm:"foreignKey:Uin"`
 }

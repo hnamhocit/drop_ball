@@ -2,12 +2,10 @@ package config
 
 import (
 	"crypto/rand"
+	"drop_ball/handlers"
 	"drop_ball/middlewares"
-	"drop_ball/models"
 	"drop_ball/types"
 	"drop_ball/utils"
-	"errors"
-	"log"
 	"math/big"
 	"os"
 
@@ -40,64 +38,33 @@ func LoadRoutes(r *gin.Engine, db *gorm.DB) {
 		})
 	})
 
-	r.Use(middlewares.AuthMiddleware())
+	r.Use(middlewares.AuthMiddleware(db))
 
-	r.GET("/", func(c *gin.Context) {
-		uin, ok := c.Get("uin")
-
-		if !ok {
-			c.JSON(401, types.Response{
-				Code: 0,
-				Msg:  "UIN is invalid!",
-				Data: nil,
-			})
+	api := r.Group("/api")
+	{
+		users := api.Group("/users")
+		{
+			userRepo := handlers.UserRepo{DB: db}
+			users.GET("/me", userRepo.GetUser)
 		}
 
-		var user models.User
-
-		result := db.Preload("Missions").First(&user, "uin = ?", uin)
-
-		if result.Error != nil {
-			if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-				uinValue, ok := uin.(string)
-				if !ok {
-					c.JSON(400, types.Response{
-						Code: 0,
-						Msg:  "Invalid UIN type",
-					})
-					return
-				}
-
-				log.Println("[USER] not found, create new...")
-
-				db.Create(&models.User{
-					Uin:       uinValue,
-					BallCount: 10,
-				})
-
-				db.Preload("Missions").First(&user, "uin = ?", uinValue)
-			} else {
-				c.JSON(500, types.Response{
-					Code: 0,
-					Msg:  "Database error",
-				})
-				return
-			}
+		randoms := api.Group("/randoms")
+		{
+			randomRepo := handlers.RandomRepo{DB: db}
+			randoms.POST("", randomRepo.Randoms)
 		}
 
-		missionMap := make(map[string]bool)
-		for index, mission := range user.Missions {
-			missionMap[string(rune(index))] = mission.IsComplete
+		giftCodes := api.Group("/giftcodes")
+		{
+			giftCodeRepo := handlers.GiftCodeRepo{DB: db}
+			giftCodes.POST("", giftCodeRepo.CreateGiftCode)
+			giftCodes.GET("", giftCodeRepo.GetGiftCodes)
 		}
 
-		c.JSON(200, types.Response{
-			Code: 1,
-			Msg:  "Get user info successfully!",
-			Data: gin.H{
-				"uin":        user.Uin,
-				"ball_count": user.BallCount,
-				"missions":   missionMap,
-			},
-		})
-	})
+		rewards := api.Group("/rewards")
+		{
+			rewardRepo := handlers.RewardRepo{DB: db}
+			rewards.POST("", rewardRepo.CreateReward)
+		}
+	}
 }

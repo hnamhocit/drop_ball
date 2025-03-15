@@ -17,7 +17,6 @@ func main() {
 	}()
 
 	config.LoadRoutes(r, db)
-	config.SetResetSchedule(db)
 
 	r.Run()
 }
